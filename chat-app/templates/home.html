@@ -2,20 +2,116 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .card {
+            width: 100%;
+            max-width: 800px;
+            margin: 20px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+        }
+        .card-header {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .card-body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .btn {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 200px;
+        }
+        .friends-list {
+            list-style: none;
+            padding: 0;
+            width: 100%;
+        }
+        .friends-list li {
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .online {
+            background-color: green;
+        }
+        .offline {
+            background-color: red;
+        }
+    </style>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script type="text/javascript" charset="utf-8">
+        document.addEventListener('DOMContentLoaded', (event) => {
+            var socket = io('http://localhost:5000');  // Yerel IP adresi veya sunucu IP adresi
+            socket.on('connect', function() {
+                socket.emit('online', {user_id: {{ current_user.id }}});
+            });
+            socket.on('user_status', function(data) {
+                var userId = data.user_id;
+                var status = data.status;
+                var statusIndicator = document.getElementById('status-' + userId);
+                if (statusIndicator) {
+                    if (status === 'online') {
+                        statusIndicator.classList.remove('offline');
+                        statusIndicator.classList.add('online');
+                    } else {
+                        statusIndicator.classList.remove('online');
+                        statusIndicator.classList.add('offline');
+                    }
+                }
+            });
+        });
+    </script>
 </head>
 <body>
-    <h1>Welcome, {{ current_user.username }}!</h1>
-    <form method="POST" action="{{ url_for('add_friend') }}">
-        <input type="email" name="email" placeholder="Friend's Email" required>
-        <button type="submit">Add Friend</button>
-    </form>
-    <h2>Friends:</h2>
-    <ul>
-        {% for friend in friends %}
-            <li><a href="{{ url_for('chat', friend_id=friend.friend_id) }}">{{ friend.friend_id }}</a></li>
-        {% endfor %}
-    </ul>
-    <a href="{{ url_for('logout') }}">Logout</a>
+    <div class="card">
+        <div class="card-header">Welcome, {{ current_user.username }}!</div>
+        <div class="card-body">
+            <h5 class="card-title">Your Friends</h5>
+            <ul class="friends-list">
+                {% for friend in friends %}
+                    <li>
+                        {{ friend.friend_user.username }}
+                        <span id="status-{{ friend.friend_id }}" class="status-indicator offline"></span>
+                        <a href="{{ url_for('chat', friend_id=friend.friend_id) }}" class="btn btn-primary btn-sm">Chat</a>
+                    </li>
+                {% endfor %}
+            </ul>
+            <form method="POST" action="{{ url_for('add_friend') }}">
+                <div class="form-group">
+                    <input type="email" name="email" class="form-control" placeholder="Enter friend's email" required>
+                </div>
+                <button type="submit" class="btn btn-success btn-block">Add Friend</button>
+            </form>
+            <a href="{{ url_for('logout') }}" class="btn btn-danger btn-block">Logout</a>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
