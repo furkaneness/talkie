@@ -4,6 +4,7 @@ from models import User, Friend, Message
 from flask_login import login_user, current_user, logout_user, login_required
 from forms import RegistrationForm, LoginForm
 from flask_socketio import send, emit, join_room, leave_room
+from datetime import datetime
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():
@@ -69,7 +70,7 @@ def chat(friend_id):
         message = Message(content=message_content, author=current_user, recipient_id=friend_id)
         db.session.add(message)
         db.session.commit()
-        socketio.emit('message', {'message': message_content, 'username': current_user.username}, room=room)
+        socketio.emit('message', {'message': message_content, 'username': current_user.username, 'timestamp': datetime.utcnow().strftime('%H:%M:%S')}, room=room)
     messages_sent = Message.query.filter_by(user_id=current_user.id, recipient_id=friend_id).all()
     messages_received = Message.query.filter_by(user_id=friend_id, recipient_id=current_user.id).all()
     messages = sorted(messages_sent + messages_received, key=lambda x: x.date_posted)
@@ -80,16 +81,17 @@ def handle_join(data):
     username = data['username']
     room = data['room']
     join_room(room)
-    send(f'{username} has entered the room.', to=room)
+    send({'message': f'{username} has entered the room.', 'username': 'System'}, to=room)
 
 @socketio.on('leave')
 def handle_leave(data):
     username = data['username']
     room = data['room']
     leave_room(room)
-    send(f'{username} has left the room.', to=room)
+    send({'message': f'{username} has left the room.', 'username': 'System'}, to=room)
 
 @socketio.on('message')
 def handle_message(data):
     room = data['room']
-    send({'message': data['message'], 'username': data['username']}, to=room)
+    data['timestamp'] = data.get('timestamp', datetime.utcnow().strftime('%H:%M:%S'))
+    send({'message': data['message'], 'username': data['username'], 'timestamp': data['timestamp']}, to=room)
