@@ -35,12 +35,16 @@
             width: 100%;
             max-width: 200px;
         }
-        .friends-list {
+        .friends-list,
+        .friend-requests,
+        .notifications {
             list-style: none;
             padding: 0;
             width: 100%;
         }
-        .friends-list li {
+        .friends-list li,
+        .friend-requests li,
+        .notifications li {
             padding: 10px;
             margin: 10px 0;
             background-color: #fff;
@@ -64,28 +68,6 @@
         }
     </style>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-    <script type="text/javascript" charset="utf-8">
-        document.addEventListener('DOMContentLoaded', (event) => {
-            var socket = io('http://localhost:5000');  // Yerel IP adresi veya sunucu IP adresi
-            socket.on('connect', function() {
-                socket.emit('online', {user_id: {{ current_user.id }}});
-            });
-            socket.on('user_status', function(data) {
-                var userId = data.user_id;
-                var status = data.status;
-                var statusIndicator = document.getElementById('status-' + userId);
-                if (statusIndicator) {
-                    if (status === 'online') {
-                        statusIndicator.classList.remove('offline');
-                        statusIndicator.classList.add('online');
-                    } else {
-                        statusIndicator.classList.remove('online');
-                        statusIndicator.classList.add('offline');
-                    }
-                }
-            });
-        });
-    </script>
 </head>
 <body>
     <div class="card">
@@ -101,6 +83,24 @@
                     </li>
                 {% endfor %}
             </ul>
+            <h5 class="card-title">Friend Requests</h5>
+            <ul class="friend-requests">
+                {% for request in friend_requests %}
+                    <li>
+                        {{ request.sender.username }}
+                        <div>
+                            <a href="{{ url_for('respond_friend_request', request_id=request.id, response='accept') }}" class="btn btn-success btn-sm">Accept</a>
+                            <a href="{{ url_for('respond_friend_request', request_id=request.id, response='reject') }}" class="btn btn-danger btn-sm">Reject</a>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+            <h5 class="card-title">Notifications</h5>
+            <ul id="notification-list" class="notifications">
+                {% for notification in notifications %}
+                    <li>{{ notification.message }} <button onclick="removeNotification(this)">Dismiss</button></li>
+                {% endfor %}
+            </ul>
             <form method="POST" action="{{ url_for('add_friend') }}">
                 <div class="form-group">
                     <input type="email" name="email" class="form-control" placeholder="Enter friend's email" required>
@@ -110,6 +110,43 @@
             <a href="{{ url_for('logout') }}" class="btn btn-danger btn-block">Logout</a>
         </div>
     </div>
+
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', (event) => {
+            var socket = io('http://localhost:5000');  // Yerel IP adresi veya sunucu IP adresi
+            var currentUserId = {{ current_user.id | tojson | safe }};
+            socket.on('connect', function() {
+                socket.emit('online', {user_id: currentUserId});
+            });
+            socket.on('user_status', function(data) {
+                var userId = data.user_id;
+                var status = data.status;
+                var statusIndicator = document.getElementById('status-' + userId);
+                if (statusIndicator) {
+                    if (status === 'online') {
+                        statusIndicator.classList.remove('offline');
+                        statusIndicator.classList.add('online');
+                    } else {
+                        statusIndicator.classList.remove('online');
+                        statusIndicator.classList.add('offline');
+                    }
+                }
+            });
+            socket.on('new_notification', function(data) {
+                if (data.user_id === currentUserId) {
+                    var notificationList = document.getElementById('notification-list');
+                    var newNotification = document.createElement('li');
+                    newNotification.innerHTML = `${data.message} <button onclick="removeNotification(this)">Dismiss</button>`;
+                    notificationList.appendChild(newNotification);
+                }
+            });
+        });
+
+        function removeNotification(button) {
+            button.parentElement.remove();
+        }
+    </script>
+
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
